@@ -1,12 +1,21 @@
 import React from 'react';
 import { PlayerPosition } from '@shared/game-types';
 import { PlayerData } from '../../store/gameStore';
+import { useSettingsStore } from '../../store/settingsStore';
 
 const AVATARS = ['🧙', '🤠', '🦊', '🐸', '🌟', '🎭', '🦉', '🐺', '🌙', '🔥', '💎', '🃏'];
 
+const SOUTH_BOTTOM_OFFSET: Record<string, string> = {
+  small: 'bottom-[90px]',
+  medium: 'bottom-[115px]',
+  large: 'bottom-[145px]',
+};
+
 export function PlayerHUD({ player, isCurrentTurn, position }: { player: PlayerData; isCurrentTurn: boolean; position: PlayerPosition }) {
+  const cardSize = useSettingsStore(s => s.cardSize);
+  const southBottom = SOUTH_BOTTOM_OFFSET[cardSize] || SOUTH_BOTTOM_OFFSET.medium;
   const positionClasses: Record<PlayerPosition, string> = {
-    [PlayerPosition.SOUTH]: 'bottom-[115px] left-1/2 -translate-x-1/2',
+    [PlayerPosition.SOUTH]: `${southBottom} left-1/2 -translate-x-1/2`,
     [PlayerPosition.WEST]: 'left-2 top-1/2 -translate-y-1/2',
     [PlayerPosition.NORTH]: 'top-2 left-1/2 -translate-x-1/2',
     [PlayerPosition.EAST]: 'right-2 top-1/2 -translate-y-1/2',
