@@ -14,7 +14,7 @@ import { createDeck, shuffleDeck, dealCards, sortHand, removeCard } from '../gam
 import {
   getPassDirection, getPassTargetIndex, findStartingPlayer,
   getLegalMoves, getTrickWinner, doesCardBreakHearts,
-  calculateTrickPoints,
+  calculateTrickPoints, pickRandomCards, LegalMoveModifiers,
 } from '../game-logic/rules';
 import { scoreHand, applyMoonScoring, isGameOver, getWinner } from '../game-logic/scoring';
 import { chooseBotPassCards, chooseBotPlay, getBotDelay } from '../game-logic/bot-ai';
@@ -88,7 +88,17 @@ const defaultSettings: GameSettings = {
   noPassing: false,
   queenFrenzy: false,
   krakenKing: false,
+  blindPass: false,
+  mustBleed: false,
+  reverseTrickWin: false,
+  heartsAlwaysLead: false,
+  doubleTrouble: false,
 };
+
+/** Get legal move modifiers from game settings */
+function getLegalMoveMods(settings: GameSettings): LegalMoveModifiers {
+  return { mustBleed: settings.mustBleed, heartsAlwaysLead: settings.heartsAlwaysLead };
+}
 
 /** Get current animation delay multiplier from settings */
 function speedMult(): number {
@@ -151,6 +161,27 @@ function _startNewHand(get: () => GameStore, set: (s: Partial<GameStore>) => voi
 
   if (passDirection === PassDirection.NONE) {
     setTimeout(() => _startPlayPhase(get, set), 300 * speedMult());
+  } else if (state.settings.blindPass) {
+    // Blind pass: auto-select random cards for everyone and auto-confirm
+    setTimeout(() => {
+      const s = get();
+      const updatedPlayers = s.players.map(p => {
+        const randomCards = pickRandomCards(p.hand, 3);
+        return { ...p, _passCards: randomCards.map(c => c.id) };
+      });
+      // Auto-select for human
+      const humanPassCards = updatedPlayers[0]._passCards || [];
+      set({ players: updatedPlayers, selectedPassCards: humanPassCards, message: 'Blind pass — cards auto-selected!' });
+      // Auto-confirm after brief delay
+      setTimeout(() => {
+        const cur = get();
+        if (cur.phase === GamePhase.PASSING && cur.selectedPassCards.length === 3) {
+          // Use the store's confirmPass which handles the actual pass logic
+          // But we need to force it, so call the internal pass logic directly
+          _executeBlindPass(get, set);
+        }
+      }, 800 * speedMult());
+    }, 500 * speedMult());
   } else {
     setTimeout(() => {
       const s = get();
@@ -166,13 +197,42 @@ function _startNewHand(get: () => GameStore, set: (s: Partial<GameStore>) => voi
   }
 }
 
+function _executeBlindPass(get: () => GameStore, set: (s: Partial<GameStore>) => void) {
+  const state = get();
+  const players = state.players.map(p => ({ ...p, hand: [...p.hand] }));
+  const passMap = new Map<number, Card[]>();
+
+  for (let i = 0; i < players.length; i++) {
+    const passIds = players[i]._passCards || [];
+    const passedCards: Card[] = [];
+    for (const cid of passIds) {
+      const card = removeCard(players[i].hand, cid);
+      if (card) passedCards.push(card);
+    }
+    const target = getPassTargetIndex(i, state.passDirection);
+    passMap.set(target, [...(passMap.get(target) || []), ...passedCards]);
+  }
+
+  for (const [targetIdx, cards] of passMap) {
+    players[targetIdx].hand.push(...cards);
+    sortHand(players[targetIdx].hand);
+    players[targetIdx].cardCount = players[targetIdx].hand.length;
+  }
+  for (const p of players) delete p._passCards;
+
+  audioManager.playSFX('card_slide');
+  set({ players, selectedPassCards: [], message: '' });
+  setTimeout(() => _startPlayPhase(get, set), 500 * speedMult());
+}
+
 function _startPlayPhase(get: () => GameStore, set: (s: Partial<GameStore>) => void) {
   const state = get();
   const hands = state.players.map(p => p.hand);
   const startIdx = findStartingPlayer(hands);
 
+  const mods = getLegalMoveMods(state.settings);
   const legalMoves = startIdx === state.humanPlayerIndex
-    ? getLegalMoves(state.players[startIdx].hand, [], true, false).map(c => c.id)
+    ? getLegalMoves(state.players[startIdx].hand, [], true, false, mods).map(c => c.id)
     : [];
 
   if (startIdx === state.humanPlayerIndex) {
@@ -225,8 +285,9 @@ function _executePlay(get: () => GameStore, set: (s: Partial<GameStore>) => void
     setTimeout(() => _resolveTrick(get, set), 600 * speedMult());
   } else {
     const nextIdx = (playerIndex + 1) % NUM_PLAYERS;
+    const mods = getLegalMoveMods(state.settings);
     const nextLegalMoves = nextIdx === state.humanPlayerIndex
-      ? getLegalMoves(players[nextIdx].hand, currentTrick, state.isFirstTrick, heartsBroken).map(c => c.id)
+      ? getLegalMoves(players[nextIdx].hand, currentTrick, state.isFirstTrick, heartsBroken, mods).map(c => c.id)
       : [];
 
     if (nextIdx === state.humanPlayerIndex) {
@@ -259,7 +320,8 @@ function _triggerBotPlay(get: () => GameStore, set: (s: Partial<GameStore>) => v
     if (cur.phase !== GamePhase.PLAYING || cur.currentPlayerIndex !== expectedIdx) return;
 
     const bot = cur.players[cur.currentPlayerIndex];
-    const legalMoves = getLegalMoves(bot.hand, cur.currentTrick, cur.isFirstTrick, cur.heartsBroken);
+    const mods = getLegalMoveMods(cur.settings);
+    const legalMoves = getLegalMoves(bot.hand, cur.currentTrick, cur.isFirstTrick, cur.heartsBroken, mods);
     if (legalMoves.length === 0) return;
 
     const chosen = chooseBotPlay({
@@ -278,9 +340,11 @@ function _resolveTrick(get: () => GameStore, set: (s: Partial<GameStore>) => voi
   const state = get();
   if (state.currentTrick.length < NUM_PLAYERS) return;
 
-  const winner = getTrickWinner(state.currentTrick);
+  const winner = getTrickWinner(state.currentTrick, state.settings.reverseTrickWin);
   const winnerIdx = state.players.findIndex(p => p.id === winner.playedBy);
-  const points = calculateTrickPoints(state.currentTrick.map(tc => tc.card), state.settings);
+  let points = calculateTrickPoints(state.currentTrick.map(tc => tc.card), state.settings);
+  // Double trouble: even-numbered tricks score double
+  if (state.settings.doubleTrouble && state.trickNumber % 2 === 0) points *= 2;
 
   const trick: Trick = {
     cards: [...state.currentTrick],
@@ -323,8 +387,9 @@ function _resolveTrick(get: () => GameStore, set: (s: Partial<GameStore>) => voi
       _resolveHand(get, set);
     } else {
       const cur = get();
+      const mods = getLegalMoveMods(cur.settings);
       const legalMoves = winnerIdx === cur.humanPlayerIndex
-        ? getLegalMoves(players[winnerIdx].hand, [], false, cur.heartsBroken).map(c => c.id)
+        ? getLegalMoves(players[winnerIdx].hand, [], false, cur.heartsBroken, mods).map(c => c.id)
         : [];
 
       if (winnerIdx === cur.humanPlayerIndex) {

@@ -120,6 +120,12 @@ export interface GameSettings {
   noPassing: boolean;        // Skip all passing phases
   queenFrenzy: boolean;      // All Queens worth 6 pts each (QoS stays 13)
   krakenKing: boolean;       // K♠ = +17 penalty pts
+  // Gameplay modifiers
+  blindPass: boolean;        // Cards auto-selected randomly for passing
+  mustBleed: boolean;        // When void in suit, must play penalty cards first
+  reverseTrickWin: boolean;  // Lowest card of led suit wins the trick
+  heartsAlwaysLead: boolean; // Hearts can be led before being broken
+  doubleTrouble: boolean;    // Even-numbered tricks score double points
 }
 
 export interface GameState {

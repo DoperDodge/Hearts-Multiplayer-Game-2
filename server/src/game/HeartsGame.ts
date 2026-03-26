@@ -2,7 +2,7 @@ import { EventEmitter } from 'events';
 import { Card, Suit, Trick, TrickCard, GamePhase, PassDirection, GameSettings, MoonScoringVariant, isPenaltyCard, isTwoOfClubs } from '@shared/game-types';
 import { NUM_PLAYERS, CARDS_PER_HAND, PASS_CARD_COUNT, DEFAULT_SCORE_LIMIT } from '@shared/constants';
 import { createDeck, shuffleDeck, dealCards, sortHand, findCard, removeCard } from './Deck';
-import { getPassDirection, getPassTargetIndex, validatePass, findStartingPlayer, getLegalMoves, isLegalMove, getTrickWinner, doesCardBreakHearts, calculateTrickPoints, getNextPlayerIndex } from './HeartsRules';
+import { getPassDirection, getPassTargetIndex, validatePass, findStartingPlayer, getLegalMoves, isLegalMove, getTrickWinner, doesCardBreakHearts, calculateTrickPoints, getNextPlayerIndex, pickRandomCards, LegalMoveModifiers } from './HeartsRules';
 import { scoreHand, applyMoonScoring, isGameOver, getWinner } from './Scoring';
 
 export interface GamePlayer { id: string; name: string; hand: Card[]; tricksWon: Trick[]; totalScore: number; isBot: boolean; }
@@ -21,6 +21,7 @@ export class HeartsGame extends EventEmitter {
   private passDirection: PassDirection;
   private passSelections: Map<string, string[]>;
   private tricksByPlayer: Map<string, Trick[]>;
+  private accumulatedPoints: Map<string, number>;
 
   constructor(players: { id: string; name: string; isBot: boolean }[], settings: Partial<GameSettings> = {}) {
     super();
@@ -40,10 +41,19 @@ export class HeartsGame extends EventEmitter {
       noPassing: settings.noPassing ?? false,
       queenFrenzy: settings.queenFrenzy ?? false,
       krakenKing: settings.krakenKing ?? false,
+      blindPass: settings.blindPass ?? false,
+      mustBleed: settings.mustBleed ?? false,
+      reverseTrickWin: settings.reverseTrickWin ?? false,
+      heartsAlwaysLead: settings.heartsAlwaysLead ?? false,
+      doubleTrouble: settings.doubleTrouble ?? false,
     };
     this.phase = GamePhase.WAITING; this.roundNumber = 0; this.currentTrick = []; this.trickNumber = 0;
     this.currentPlayerIndex = 0; this.leadPlayerIndex = 0; this.heartsBroken = false; this.isFirstTrick = true;
-    this.passDirection = PassDirection.LEFT; this.passSelections = new Map(); this.tricksByPlayer = new Map();
+    this.passDirection = PassDirection.LEFT; this.passSelections = new Map(); this.tricksByPlayer = new Map(); this.accumulatedPoints = new Map();
+  }
+
+  private get legalMoveMods(): LegalMoveModifiers {
+    return { noPointsFirst: this.settings.noPointsOnFirstTrick, mustBleed: this.settings.mustBleed, heartsAlwaysLead: this.settings.heartsAlwaysLead };
   }
 
   getPhase(): GamePhase { return this.phase; }
@@ -60,24 +70,34 @@ export class HeartsGame extends EventEmitter {
   getPlayerHand(pid: string): Card[] { const p = this.getPlayer(pid); return p ? [...p.hand] : []; }
   getPlayers(): GamePlayer[] { return this.players.map(p => ({ ...p, hand: [...p.hand] })); }
   getTotalScores(): Record<string, number> { const s: Record<string, number> = {}; for (const p of this.players) s[p.id] = p.totalScore; return s; }
+  getSettings(): GameSettings { return { ...this.settings }; }
 
   getLegalMovesFor(pid: string): Card[] {
     const p = this.getPlayer(pid); if (!p || this.phase !== GamePhase.PLAYING || this.players[this.currentPlayerIndex].id !== pid) return [];
-    return getLegalMoves(p.hand, this.currentTrick, this.isFirstTrick, this.heartsBroken, this.settings.noPointsOnFirstTrick);
+    return getLegalMoves(p.hand, this.currentTrick, this.isFirstTrick, this.heartsBroken, this.legalMoveMods);
   }
 
   startNewHand(): void {
     this.roundNumber++; this.phase = GamePhase.DEALING;
     this.currentTrick = []; this.trickNumber = 0; this.heartsBroken = false; this.isFirstTrick = true;
     this.passSelections.clear(); this.tricksByPlayer.clear();
-    for (const p of this.players) { p.tricksWon = []; this.tricksByPlayer.set(p.id, []); }
+    for (const p of this.players) { p.tricksWon = []; this.tricksByPlayer.set(p.id, []); this.accumulatedPoints.set(p.id, 0); }
     const deck = shuffleDeck(createDeck()); const hands = dealCards(deck, NUM_PLAYERS);
     for (let i = 0; i < this.players.length; i++) this.players[i].hand = hands[i];
-    // noPassing forces PassDirection.NONE every round
     this.passDirection = this.settings.noPassing ? PassDirection.NONE : getPassDirection(this.roundNumber);
-    this.emit('deal', { roundNumber: this.roundNumber, passDirection: this.passDirection, hands: this.players.map(p => ({ playerId: p.id, hand: [...p.hand] })) });
+    this.emit('deal', { roundNumber: this.roundNumber, passDirection: this.passDirection, hands: this.players.map(p => ({ playerId: p.id, hand: [...p.hand] })), blindPass: this.settings.blindPass });
     if (this.passDirection === PassDirection.NONE) this.startPlay();
-    else { this.phase = GamePhase.PASSING; this.emit('passRequest', { passDirection: this.passDirection }); }
+    else {
+      this.phase = GamePhase.PASSING;
+      this.emit('passRequest', { passDirection: this.passDirection });
+      // Blind pass: auto-submit random cards for all players
+      if (this.settings.blindPass) {
+        for (const p of this.players) {
+          const randomCards = pickRandomCards(p.hand, PASS_CARD_COUNT);
+          this.submitPass(p.id, randomCards.map(c => c.id));
+        }
+      }
+    }
   }
 
   submitPass(pid: string, cardIds: string[]): { success: boolean; error?: string } {
@@ -111,7 +131,7 @@ export class HeartsGame extends EventEmitter {
 
   private emitTurnStart(): void {
     const p = this.players[this.currentPlayerIndex];
-    const lm = getLegalMoves(p.hand, this.currentTrick, this.isFirstTrick, this.heartsBroken, this.settings.noPointsOnFirstTrick);
+    const lm = getLegalMoves(p.hand, this.currentTrick, this.isFirstTrick, this.heartsBroken, this.legalMoveMods);
     this.emit('turnStart', { playerId: p.id, legalMoves: lm.map(c => c.id), currentTrick: [...this.currentTrick], trickNumber: this.trickNumber, isBot: p.isBot });
   }
 
@@ -120,7 +140,7 @@ export class HeartsGame extends EventEmitter {
     const p = this.players[this.currentPlayerIndex];
     if (p.id !== pid) return { success: false, error: 'Not your turn' };
     const card = findCard(p.hand, cardId); if (!card) return { success: false, error: 'Card not in hand' };
-    if (!isLegalMove(card, p.hand, this.currentTrick, this.isFirstTrick, this.heartsBroken, this.settings.noPointsOnFirstTrick)) return { success: false, error: 'Illegal move' };
+    if (!isLegalMove(card, p.hand, this.currentTrick, this.isFirstTrick, this.heartsBroken, this.legalMoveMods)) return { success: false, error: 'Illegal move' };
     removeCard(p.hand, cardId);
     if (!this.heartsBroken && this.currentTrick.length > 0) {
       const ls = this.currentTrick[0].card.suit;
@@ -134,11 +154,14 @@ export class HeartsGame extends EventEmitter {
   }
 
   private resolveTrick(): void {
-    const winner = getTrickWinner(this.currentTrick);
+    const winner = getTrickWinner(this.currentTrick, this.settings.reverseTrickWin);
     const wi = this.getPlayerIndex(winner.playedBy);
-    const pts = calculateTrickPoints(this.currentTrick.map(tc => tc.card), this.settings);
+    let pts = calculateTrickPoints(this.currentTrick.map(tc => tc.card), this.settings);
+    // Double trouble: even-numbered tricks score double
+    if (this.settings.doubleTrouble && this.trickNumber % 2 === 0) pts *= 2;
     const trick: Trick = { cards: [...this.currentTrick], ledSuit: this.currentTrick[0].card.suit, winnerId: winner.playedBy };
     this.players[wi].tricksWon.push(trick); this.tricksByPlayer.get(winner.playedBy)!.push(trick);
+    this.accumulatedPoints.set(winner.playedBy, (this.accumulatedPoints.get(winner.playedBy) || 0) + pts);
     this.emit('trickComplete', { winnerId: winner.playedBy, trick, points: pts, heartsBroken: this.heartsBroken, trickNumber: this.trickNumber });
     this.currentTrick = []; this.trickNumber++; this.isFirstTrick = false;
     if (this.trickNumber > CARDS_PER_HAND) this.resolveHand();
@@ -149,7 +172,12 @@ export class HeartsGame extends EventEmitter {
     this.phase = GamePhase.SCORING;
     const pids = this.players.map(p => p.id);
     const result = scoreHand(this.tricksByPlayer, pids, this.settings);
-    let fs = result.scores;
+    // When doubleTrouble is on, use accumulated per-trick points (which include doubling)
+    // instead of scoreHand's flat recalculation (which doesn't know trick order)
+    let fs = this.settings.doubleTrouble
+      ? Object.fromEntries(pids.map(pid => [pid, this.accumulatedPoints.get(pid) || 0]))
+      : result.scores;
+
     if (result.moonShooter) {
       if (this.settings.moonScoringVariant !== MoonScoringVariant.PLAYER_CHOICE) {
         fs = applyMoonScoring(result.scores, result.moonShooter, this.settings.moonScoringVariant, this.getTotalScores(), this.settings.scoreLimit, this.settings);

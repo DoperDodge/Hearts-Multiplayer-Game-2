@@ -15,6 +15,11 @@ export function SoloConfig({ onStart, onBack }: SoloConfigProps) {
   const [noPassing, setNoPassing] = useState(false);
   const [queenFrenzy, setQueenFrenzy] = useState(false);
   const [krakenKing, setKrakenKing] = useState(false);
+  const [blindPass, setBlindPass] = useState(false);
+  const [mustBleed, setMustBleed] = useState(false);
+  const [reverseTrickWin, setReverseTrickWin] = useState(false);
+  const [heartsAlwaysLead, setHeartsAlwaysLead] = useState(false);
+  const [doubleTrouble, setDoubleTrouble] = useState(false);
 
   const difficulties: { value: BotDifficulty; label: string; desc: string; color: string }[] = [
     { value: BotDifficulty.EASY, label: 'EASY', desc: 'Plays random legal cards. Great for learning!', color: 'text-pixel-green border-pixel-green' },
@@ -33,9 +38,19 @@ export function SoloConfig({ onStart, onBack }: SoloConfigProps) {
     { key: 'kk', label: '♠K = +17 pts', desc: 'Kraken King', checked: krakenKing, onChange: setKrakenKing, color: 'text-red-400' },
   ];
 
+  const modifiers: { key: string; label: string; desc: string; checked: boolean; onChange: (v: boolean) => void; color: string }[] = [
+    { key: 'bp', label: 'Blind Pass', desc: 'Cards auto-picked for passing', checked: blindPass, onChange: setBlindPass, color: 'text-blue-400' },
+    { key: 'mb', label: 'Must Bleed', desc: 'Void? Must dump penalty cards', checked: mustBleed, onChange: setMustBleed, color: 'text-pixel-accent' },
+    { key: 'rtw', label: 'Reverse Win', desc: 'Lowest card wins trick', checked: reverseTrickWin, onChange: setReverseTrickWin, color: 'text-yellow-400' },
+    { key: 'hal', label: 'Free Lead', desc: 'Hearts can always be led', checked: heartsAlwaysLead, onChange: setHeartsAlwaysLead, color: 'text-pink-400' },
+    { key: 'dt', label: 'Double Trouble', desc: 'Even tricks score ×2', checked: doubleTrouble, onChange: setDoubleTrouble, color: 'text-orange-400' },
+  ];
+
   const handlePartyMode = () => {
     setJackOfDiamonds(true); setTenOfClubs(true); setBloodHearts(true);
     setNoPassing(true); setQueenFrenzy(true); setKrakenKing(true);
+    setBlindPass(true); setMustBleed(true); setReverseTrickWin(true);
+    setHeartsAlwaysLead(true); setDoubleTrouble(true);
     setScoreLimit(200); setDifficulty(BotDifficulty.HARD);
   };
 
@@ -78,6 +93,18 @@ export function SoloConfig({ onStart, onBack }: SoloConfigProps) {
               </label>
             ))}
           </div>
+          <label className="block text-[8px] font-pixel text-pixel-muted mb-2 mt-3 uppercase">Game Modifiers</label>
+          <div className="flex flex-col gap-1">
+            {modifiers.map(v => (
+              <label key={v.key} className="flex items-center gap-3 cursor-pointer py-1">
+                <input type="checkbox" checked={v.checked} onChange={(e) => v.onChange(e.target.checked)} className="w-4 h-4 accent-pixel-gold" />
+                <div>
+                  <span className={`font-pixel text-[8px] ${v.checked ? v.color : 'text-pixel-text'}`}>{v.label}</span>
+                  <span className="font-pixel text-[6px] text-pixel-muted ml-2">{v.desc}</span>
+                </div>
+              </label>
+            ))}
+          </div>
           <div className="mt-3">
             <label className="block text-[7px] font-pixel text-pixel-muted mb-1">Moon Scoring</label>
             <div className="flex gap-2 flex-wrap">
@@ -104,7 +131,7 @@ export function SoloConfig({ onStart, onBack }: SoloConfigProps) {
         </div>
         <div className="flex gap-3 justify-between mt-4">
           <PixelButton variant="secondary" size="sm" onClick={onBack}>← BACK</PixelButton>
-          <PixelButton variant="primary" size="lg" onClick={() => onStart(difficulty, { scoreLimit, jackOfDiamonds, moonScoringVariant: moonVariant, tenOfClubs, bloodHearts, noPassing, queenFrenzy, krakenKing })}>♥ START ♥</PixelButton>
+          <PixelButton variant="primary" size="lg" onClick={() => onStart(difficulty, { scoreLimit, jackOfDiamonds, moonScoringVariant: moonVariant, tenOfClubs, bloodHearts, noPassing, queenFrenzy, krakenKing, blindPass, mustBleed, reverseTrickWin, heartsAlwaysLead, doubleTrouble })}>♥ START ♥</PixelButton>
         </div>
       </PixelPanel>
     </div>

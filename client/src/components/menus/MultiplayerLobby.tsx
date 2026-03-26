@@ -14,6 +14,7 @@ const defaultGameSettings: GameSettings = {
   noPointsOnFirstTrick: false, queenBreaksHearts: true, botDifficulty: BotDifficulty.MEDIUM,
   turnTimeout: 60000, animationSpeed: 'normal',
   tenOfClubs: false, bloodHearts: false, noPassing: false, queenFrenzy: false, krakenKing: false,
+  blindPass: false, mustBleed: false, reverseTrickWin: false, heartsAlwaysLead: false, doubleTrouble: false,
 };
 
 function GameSettingsPanel({ settings, onChange, readOnly }: { settings: GameSettings; onChange: (s: GameSettings) => void; readOnly?: boolean }) {
@@ -32,9 +33,17 @@ function GameSettingsPanel({ settings, onChange, readOnly }: { settings: GameSet
     { key: 'krakenKing', label: '♠K = +17 pts', desc: 'Kraken King', color: 'text-red-400' },
   ];
 
+  const modifiers: { key: keyof GameSettings; label: string; desc: string; color: string }[] = [
+    { key: 'blindPass', label: 'Blind Pass', desc: 'Cards auto-picked', color: 'text-blue-400' },
+    { key: 'mustBleed', label: 'Must Bleed', desc: 'Void? Dump penalties', color: 'text-pixel-accent' },
+    { key: 'reverseTrickWin', label: 'Reverse Win', desc: 'Low card wins', color: 'text-yellow-400' },
+    { key: 'heartsAlwaysLead', label: 'Free Lead', desc: 'Lead hearts anytime', color: 'text-pink-400' },
+    { key: 'doubleTrouble', label: 'Double Trouble', desc: 'Even tricks ×2', color: 'text-orange-400' },
+  ];
+
   const handlePartyMode = () => {
     if (readOnly) return;
-    onChange({ ...settings, jackOfDiamonds: true, tenOfClubs: true, bloodHearts: true, noPassing: true, queenFrenzy: true, krakenKing: true, scoreLimit: 200 });
+    onChange({ ...settings, jackOfDiamonds: true, tenOfClubs: true, bloodHearts: true, noPassing: true, queenFrenzy: true, krakenKing: true, blindPass: true, mustBleed: true, reverseTrickWin: true, heartsAlwaysLead: true, doubleTrouble: true, scoreLimit: 200 });
   };
 
   return (
@@ -54,6 +63,20 @@ function GameSettingsPanel({ settings, onChange, readOnly }: { settings: GameSet
         <label className="block text-[7px] font-pixel text-pixel-muted mb-1 uppercase">Variants</label>
         <div className="flex flex-col gap-0.5">
           {variants.map(v => (
+            <label key={v.key} className={`flex items-center gap-2 py-0.5 ${readOnly ? 'cursor-default' : 'cursor-pointer'}`}>
+              <input type="checkbox" checked={!!settings[v.key]} onChange={() => toggle(v.key)} disabled={readOnly} className="w-3 h-3 accent-pixel-gold" />
+              <div>
+                <span className={`font-pixel text-[7px] ${settings[v.key] ? v.color : 'text-pixel-text'}`}>{v.label}</span>
+                <span className="font-pixel text-[5px] text-pixel-muted ml-1">{v.desc}</span>
+              </div>
+            </label>
+          ))}
+        </div>
+      </div>
+      <div>
+        <label className="block text-[7px] font-pixel text-pixel-muted mb-1 uppercase">Game Modifiers</label>
+        <div className="flex flex-col gap-0.5">
+          {modifiers.map(v => (
             <label key={v.key} className={`flex items-center gap-2 py-0.5 ${readOnly ? 'cursor-default' : 'cursor-pointer'}`}>
               <input type="checkbox" checked={!!settings[v.key]} onChange={() => toggle(v.key)} disabled={readOnly} className="w-3 h-3 accent-pixel-gold" />
               <div>
@@ -141,6 +164,11 @@ export function MultiplayerLobby({ onBack, onGameStart }: { onBack: () => void; 
     if (roomSettings.noPassing) activeVariants.push('No Pass');
     if (roomSettings.queenFrenzy) activeVariants.push('Q+6');
     if (roomSettings.krakenKing) activeVariants.push('♠K+17');
+    if (roomSettings.blindPass) activeVariants.push('Blind');
+    if (roomSettings.mustBleed) activeVariants.push('Bleed');
+    if (roomSettings.reverseTrickWin) activeVariants.push('Rev');
+    if (roomSettings.heartsAlwaysLead) activeVariants.push('Free♥');
+    if (roomSettings.doubleTrouble) activeVariants.push('×2');
 
     return (
       <div className="w-full h-full flex flex-col items-center justify-center p-4 gap-4 overflow-y-auto">
