@@ -26,7 +26,21 @@ export class HeartsGame extends EventEmitter {
     super();
     if (players.length !== NUM_PLAYERS) throw new Error(`Need ${NUM_PLAYERS} players`);
     this.players = players.map(p => ({ id: p.id, name: p.name, hand: [], tricksWon: [], totalScore: 0, isBot: p.isBot }));
-    this.settings = { scoreLimit: settings.scoreLimit ?? DEFAULT_SCORE_LIMIT, jackOfDiamonds: settings.jackOfDiamonds ?? false, moonScoringVariant: settings.moonScoringVariant ?? MoonScoringVariant.ADD_TO_OTHERS, noPointsOnFirstTrick: settings.noPointsOnFirstTrick ?? false, queenBreaksHearts: settings.queenBreaksHearts ?? true, botDifficulty: settings.botDifficulty ?? 'MEDIUM' as any, turnTimeout: settings.turnTimeout ?? 60000, animationSpeed: settings.animationSpeed ?? 'normal' };
+    this.settings = {
+      scoreLimit: settings.scoreLimit ?? DEFAULT_SCORE_LIMIT,
+      jackOfDiamonds: settings.jackOfDiamonds ?? false,
+      moonScoringVariant: settings.moonScoringVariant ?? MoonScoringVariant.ADD_TO_OTHERS,
+      noPointsOnFirstTrick: settings.noPointsOnFirstTrick ?? false,
+      queenBreaksHearts: settings.queenBreaksHearts ?? true,
+      botDifficulty: settings.botDifficulty ?? 'MEDIUM' as any,
+      turnTimeout: settings.turnTimeout ?? 60000,
+      animationSpeed: settings.animationSpeed ?? 'normal',
+      tenOfClubs: settings.tenOfClubs ?? false,
+      bloodHearts: settings.bloodHearts ?? false,
+      noPassing: settings.noPassing ?? false,
+      queenFrenzy: settings.queenFrenzy ?? false,
+      krakenKing: settings.krakenKing ?? false,
+    };
     this.phase = GamePhase.WAITING; this.roundNumber = 0; this.currentTrick = []; this.trickNumber = 0;
     this.currentPlayerIndex = 0; this.leadPlayerIndex = 0; this.heartsBroken = false; this.isFirstTrick = true;
     this.passDirection = PassDirection.LEFT; this.passSelections = new Map(); this.tricksByPlayer = new Map();
@@ -59,7 +73,8 @@ export class HeartsGame extends EventEmitter {
     for (const p of this.players) { p.tricksWon = []; this.tricksByPlayer.set(p.id, []); }
     const deck = shuffleDeck(createDeck()); const hands = dealCards(deck, NUM_PLAYERS);
     for (let i = 0; i < this.players.length; i++) this.players[i].hand = hands[i];
-    this.passDirection = getPassDirection(this.roundNumber);
+    // noPassing forces PassDirection.NONE every round
+    this.passDirection = this.settings.noPassing ? PassDirection.NONE : getPassDirection(this.roundNumber);
     this.emit('deal', { roundNumber: this.roundNumber, passDirection: this.passDirection, hands: this.players.map(p => ({ playerId: p.id, hand: [...p.hand] })) });
     if (this.passDirection === PassDirection.NONE) this.startPlay();
     else { this.phase = GamePhase.PASSING; this.emit('passRequest', { passDirection: this.passDirection }); }
@@ -121,7 +136,7 @@ export class HeartsGame extends EventEmitter {
   private resolveTrick(): void {
     const winner = getTrickWinner(this.currentTrick);
     const wi = this.getPlayerIndex(winner.playedBy);
-    const pts = calculateTrickPoints(this.currentTrick.map(tc => tc.card), this.settings.jackOfDiamonds);
+    const pts = calculateTrickPoints(this.currentTrick.map(tc => tc.card), this.settings);
     const trick: Trick = { cards: [...this.currentTrick], ledSuit: this.currentTrick[0].card.suit, winnerId: winner.playedBy };
     this.players[wi].tricksWon.push(trick); this.tricksByPlayer.get(winner.playedBy)!.push(trick);
     this.emit('trickComplete', { winnerId: winner.playedBy, trick, points: pts, heartsBroken: this.heartsBroken, trickNumber: this.trickNumber });
@@ -133,11 +148,11 @@ export class HeartsGame extends EventEmitter {
   private resolveHand(): void {
     this.phase = GamePhase.SCORING;
     const pids = this.players.map(p => p.id);
-    const result = scoreHand(this.tricksByPlayer, pids, this.settings.jackOfDiamonds);
+    const result = scoreHand(this.tricksByPlayer, pids, this.settings);
     let fs = result.scores;
     if (result.moonShooter) {
       if (this.settings.moonScoringVariant !== MoonScoringVariant.PLAYER_CHOICE) {
-        fs = applyMoonScoring(result.scores, result.moonShooter, this.settings.moonScoringVariant, this.getTotalScores(), this.settings.scoreLimit);
+        fs = applyMoonScoring(result.scores, result.moonShooter, this.settings.moonScoringVariant, this.getTotalScores(), this.settings.scoreLimit, this.settings);
       }
       this.emit('moonShot', { shooterId: result.moonShooter, shooterName: this.getPlayer(result.moonShooter)?.name });
     }

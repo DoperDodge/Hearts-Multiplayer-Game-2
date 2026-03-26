@@ -19,6 +19,7 @@ interface LobbyStore {
   joinRoom: (roomId: string, players: LobbyPlayer[], settings: GameSettings, myId: string) => void;
   updateRoom: (players: LobbyPlayer[], hostId: string) => void;
   leaveRoom: () => void;
+  updateSettings: (settings: GameSettings) => void;
   addChatMessage: (msg: { from: string; fromName: string; text: string; timestamp: number }) => void;
   clearChat: () => void;
 }
@@ -29,6 +30,7 @@ export const useLobbyStore = create<LobbyStore>((set) => ({
   setRooms: (rooms) => set({ rooms }),
   joinRoom: (roomId, players, settings, myId) => set({ currentRoomId: roomId, currentRoomPlayers: players, currentRoomSettings: settings, myPlayerId: myId, hostId: players.find(p => p.isHost)?.id || null }),
   updateRoom: (players, hostId) => set({ currentRoomPlayers: players, hostId }),
+  updateSettings: (settings) => set({ currentRoomSettings: settings }),
   leaveRoom: () => set({ currentRoomId: null, currentRoomPlayers: [], currentRoomSettings: null, myPlayerId: null, hostId: null, chatMessages: [] }),
   addChatMessage: (msg) => set((s) => ({ chatMessages: [...s.chatMessages.slice(-50), msg] })),
   clearChat: () => set({ chatMessages: [] }),

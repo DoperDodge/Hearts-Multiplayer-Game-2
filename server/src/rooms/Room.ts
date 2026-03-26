@@ -1,5 +1,5 @@
 import { EventEmitter } from 'events';
-import { GameSettings, BotDifficulty, PassDirection, Card } from '@shared/game-types';
+import { GameSettings, BotDifficulty, PassDirection, Card, MoonScoringVariant } from '@shared/game-types';
 import { NUM_PLAYERS, BOT_NAMES } from '@shared/constants';
 import { HeartsGame } from '../game/HeartsGame';
 import { EasyBot } from '../bots/EasyBot';
@@ -53,6 +53,14 @@ export class Room extends EventEmitter {
   }
 
   setReady(pid: string, ready: boolean): void { const p = this.players.get(pid); if (p) { p.isReady = ready; this.emit('readyChanged', { playerId: pid, ready }); } }
+
+  updateSettings(pid: string, settings: GameSettings): { success: boolean; error?: string } {
+    if (this.status !== 'WAITING') return { success: false, error: 'Game in progress' };
+    const p = this.players.get(pid);
+    if (!p || !p.isHost) return { success: false, error: 'Not host' };
+    (this.config as any).settings = { ...this.config.settings, ...settings };
+    return { success: true };
+  }
 
   addBot(difficulty: BotDifficulty): string {
     const names = BOT_NAMES[difficulty]; const idx = this.botNameIndex[difficulty] % names.length; this.botNameIndex[difficulty]++;

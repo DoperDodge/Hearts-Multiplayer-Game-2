@@ -4,7 +4,7 @@ import { GameSettings, BotDifficulty, MoonScoringVariant } from '@shared/game-ty
 import { MAX_ROOMS, ROOM_CLEANUP_TIMEOUT, DEFAULT_SCORE_LIMIT, DEFAULT_TURN_TIMEOUT, NUM_PLAYERS } from '@shared/constants';
 import { logger } from '../utils/logger';
 
-const DEFAULT_SETTINGS: GameSettings = { scoreLimit: DEFAULT_SCORE_LIMIT, jackOfDiamonds: false, moonScoringVariant: MoonScoringVariant.ADD_TO_OTHERS, noPointsOnFirstTrick: false, queenBreaksHearts: true, botDifficulty: BotDifficulty.MEDIUM, turnTimeout: DEFAULT_TURN_TIMEOUT, animationSpeed: 'normal' };
+const DEFAULT_SETTINGS: GameSettings = { scoreLimit: DEFAULT_SCORE_LIMIT, jackOfDiamonds: false, moonScoringVariant: MoonScoringVariant.ADD_TO_OTHERS, noPointsOnFirstTrick: false, queenBreaksHearts: true, botDifficulty: BotDifficulty.MEDIUM, turnTimeout: DEFAULT_TURN_TIMEOUT, animationSpeed: 'normal', tenOfClubs: false, bloodHearts: false, noPassing: false, queenFrenzy: false, krakenKing: false };
 
 export class RoomManager {
   private rooms: Map<string, Room> = new Map();

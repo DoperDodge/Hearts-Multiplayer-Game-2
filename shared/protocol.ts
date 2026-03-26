@@ -16,11 +16,13 @@ export interface ChatMessageMsg { type: 'CHAT_MESSAGE'; text: string; }
 export interface RematchMsg { type: 'REMATCH'; }
 export interface SetPlayerInfoMsg { type: 'SET_PLAYER_INFO'; name: string; avatar: number; }
 export interface PingMsg { type: 'PING'; }
+export interface UpdateRoomSettingsMsg { type: 'UPDATE_ROOM_SETTINGS'; settings: GameSettings; }
 
 export type ClientMessage =
   | JoinLobbyMsg | CreateRoomMsg | JoinRoomMsg | LeaveRoomMsg
   | SetReadyMsg | StartGameMsg | PassCardsMsg | PlayCardMsg
-  | ChatMessageMsg | RematchMsg | SetPlayerInfoMsg | PingMsg;
+  | ChatMessageMsg | RematchMsg | SetPlayerInfoMsg | PingMsg
+  | UpdateRoomSettingsMsg;
 
 export interface LobbyStateMsg { type: 'LOBBY_STATE'; rooms: RoomInfo[]; }
 export interface RoomJoinedMsg { type: 'ROOM_JOINED'; roomId: string; players: PlayerInfo[]; settings: GameSettings; yourPlayerId: string; }
@@ -36,6 +38,7 @@ export interface GameOverMsg { type: 'GAME_OVER'; finalScores: Record<string, nu
 export interface ChatBroadcastMsg { type: 'CHAT_BROADCAST'; from: string; fromName: string; text: string; timestamp: number; }
 export interface PlayerDisconnectedMsg { type: 'PLAYER_DISCONNECTED'; playerId: string; playerName: string; }
 export interface PlayerReconnectedMsg { type: 'PLAYER_RECONNECTED'; playerId: string; playerName: string; }
+export interface RoomSettingsUpdatedMsg { type: 'ROOM_SETTINGS_UPDATED'; settings: GameSettings; }
 export interface ErrorMsg { type: 'ERROR'; message: string; code: string; }
 export interface PongMsg { type: 'PONG'; }
 export interface GameStateSnapshotMsg { type: 'GAME_STATE_SNAPSHOT'; hand: Card[]; phase: GamePhase; passDirection: PassDirection; currentTrick: Trick; trickNumber: number; heartsBroken: boolean; isYourTurn: boolean; legalMoves: string[]; scores: Record<string, number>; totalScores: Record<string, number>; roundNumber: number; playerPositions: { id: string; name: string; position: string; avatar: number; cardCount: number }[]; }
@@ -45,4 +48,4 @@ export type ServerMessage =
   | PassReceivedMsg | WaitingForPassMsg | YourTurnMsg | CardPlayedMsg
   | TrickCompleteMsg | HandCompleteMsg | GameOverMsg | ChatBroadcastMsg
   | PlayerDisconnectedMsg | PlayerReconnectedMsg | ErrorMsg | PongMsg
-  | GameStateSnapshotMsg;
+  | GameStateSnapshotMsg | RoomSettingsUpdatedMsg;

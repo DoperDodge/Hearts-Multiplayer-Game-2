@@ -4,6 +4,13 @@
 
 export const DEFAULT_SCORE_LIMIT = 100;
 export const TOTAL_PENALTY_POINTS = 26;
+
+// Variant point values
+export const TEN_OF_CLUBS_POINTS = 10;
+export const BLOOD_HEARTS_MULTIPLIER = 2;
+export const QUEEN_FRENZY_POINTS = 6;  // per non-spade Queen
+export const KRAKEN_KING_POINTS = 17;
+export const JACK_OF_DIAMONDS_POINTS = -10;
 export const CARDS_PER_HAND = 13;
 export const NUM_PLAYERS = 4;
 export const PASS_CARD_COUNT = 3;
