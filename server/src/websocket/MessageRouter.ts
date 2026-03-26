@@ -25,6 +25,7 @@ export class MessageRouter {
       case 'PLAY_CARD': this.handlePlayCard(client, (message as any).cardId); break;
       case 'CHAT_MESSAGE': this.handleChat(client, (message as any).text); break;
       case 'REMATCH': this.handleRematch(client); break;
+      case 'UPDATE_ROOM_SETTINGS': this.handleUpdateRoomSettings(client, (message as any).settings); break;
       default: client.send({ type: 'ERROR', message: 'Unknown message type', code: 'UNKNOWN_TYPE' });
     }
   }
@@ -77,6 +78,15 @@ export class MessageRouter {
   private handlePlayCard(client: ClientConnection, cardId: string): void { const room = this.roomManager.getRoomForPlayer(client.id); const game = room?.getGame(); if (!game) return; const r = game.playCard(client.id, cardId); if (!r.success) client.send({ type: 'ERROR', message: r.error || 'Invalid play', code: 'PLAY_FAILED' }); }
   private handleChat(client: ClientConnection, text: string): void { const room = this.roomManager.getRoomForPlayer(client.id); if (!room) return; const s = text.slice(0, 200).trim(); if (!s) return; this.broadcastToRoom(room, { type: 'CHAT_BROADCAST', from: client.id, fromName: client.name, text: s, timestamp: Date.now() }); }
   private handleRematch(client: ClientConnection): void { const room = this.roomManager.getRoomForPlayer(client.id); if (room) room.setReady(client.id, true); }
+
+  private handleUpdateRoomSettings(client: ClientConnection, settings: any): void {
+    const room = this.roomManager.getRoomForPlayer(client.id);
+    if (!room) return;
+    const result = room.updateSettings(client.id, settings);
+    if (!result.success) { client.send({ type: 'ERROR', message: result.error || 'Cannot update settings', code: 'SETTINGS_FAILED' }); return; }
+    this.broadcastToRoom(room, { type: 'ROOM_SETTINGS_UPDATED', settings: room.config.settings });
+    this.broadcastLobbyState();
+  }
 
   private setupRoomListeners(room: Room): void {
     room.on('gameDeal', (data) => {

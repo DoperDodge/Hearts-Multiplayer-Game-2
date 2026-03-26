@@ -83,6 +83,11 @@ const defaultSettings: GameSettings = {
   botDifficulty: BotDifficulty.MEDIUM,
   turnTimeout: 60000,
   animationSpeed: 'normal',
+  tenOfClubs: false,
+  bloodHearts: false,
+  noPassing: false,
+  queenFrenzy: false,
+  krakenKing: false,
 };
 
 /** Get current animation delay multiplier from settings */
@@ -102,7 +107,7 @@ function triggerShake(set: (s: Partial<GameStore>) => void): void {
 function _startNewHand(get: () => GameStore, set: (s: Partial<GameStore>) => void) {
   const state = get();
   const roundNumber = state.roundNumber + 1;
-  const passDirection = getPassDirection(roundNumber);
+  const passDirection = state.settings.noPassing ? PassDirection.NONE : getPassDirection(roundNumber);
 
   const deck = shuffleDeck(createDeck());
   const hands = dealCards(deck, NUM_PLAYERS);
@@ -275,7 +280,7 @@ function _resolveTrick(get: () => GameStore, set: (s: Partial<GameStore>) => voi
 
   const winner = getTrickWinner(state.currentTrick);
   const winnerIdx = state.players.findIndex(p => p.id === winner.playedBy);
-  const points = calculateTrickPoints(state.currentTrick.map(tc => tc.card), state.settings.jackOfDiamonds);
+  const points = calculateTrickPoints(state.currentTrick.map(tc => tc.card), state.settings);
 
   const trick: Trick = {
     cards: [...state.currentTrick],
@@ -345,11 +350,11 @@ function _resolveTrick(get: () => GameStore, set: (s: Partial<GameStore>) => voi
 function _resolveHand(get: () => GameStore, set: (s: Partial<GameStore>) => void) {
   const state = get();
   const playerIds = state.players.map(p => p.id);
-  const result = scoreHand(state.tricksByPlayer, playerIds, state.settings.jackOfDiamonds);
+  const result = scoreHand(state.tricksByPlayer, playerIds, state.settings);
 
   let finalScores = result.scores;
   if (result.moonShooter) {
-    finalScores = applyMoonScoring(result.scores, result.moonShooter, state.settings.moonScoringVariant);
+    finalScores = applyMoonScoring(result.scores, result.moonShooter, state.settings.moonScoringVariant, state.settings);
     audioManager.playSFX('shoot_moon');
     triggerShake(set);
   }

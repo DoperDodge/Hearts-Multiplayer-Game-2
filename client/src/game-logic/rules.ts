@@ -1,4 +1,5 @@
-import { Card, Suit, Rank, TrickCard, PassDirection, isPenaltyCard, isQueenOfSpades, isTwoOfClubs } from '@shared/game-types';
+import { Card, Suit, Rank, TrickCard, PassDirection, GameSettings, isPenaltyCard, isQueenOfSpades, isTwoOfClubs, isTenOfClubs, isKingOfSpades, isQueen } from '@shared/game-types';
+import { TEN_OF_CLUBS_POINTS, BLOOD_HEARTS_MULTIPLIER, QUEEN_FRENZY_POINTS, KRAKEN_KING_POINTS } from '@shared/constants';
 
 export function getPassDirection(roundNumber: number): PassDirection {
   const c = (roundNumber - 1) % 4;
@@ -54,12 +55,21 @@ export function doesCardBreakHearts(card: Card): boolean {
   return card.suit === Suit.HEARTS || isQueenOfSpades(card);
 }
 
-export function calculateTrickPoints(cards: Card[], jod: boolean = false): number {
+export function calculateTrickPoints(cards: Card[], settings: Partial<GameSettings> = {}): number {
+  const jod = settings.jackOfDiamonds ?? false;
+  const bh = settings.bloodHearts ?? false;
+  const toc = settings.tenOfClubs ?? false;
+  const qf = settings.queenFrenzy ?? false;
+  const kk = settings.krakenKing ?? false;
+
   let p = 0;
   for (const c of cards) {
-    if (c.suit === Suit.HEARTS) p += 1;
+    if (c.suit === Suit.HEARTS) p += bh ? BLOOD_HEARTS_MULTIPLIER : 1;
     if (isQueenOfSpades(c)) p += 13;
     if (jod && c.suit === Suit.DIAMONDS && c.rank === Rank.JACK) p -= 10;
+    if (toc && isTenOfClubs(c)) p += TEN_OF_CLUBS_POINTS;
+    if (qf && isQueen(c) && !isQueenOfSpades(c)) p += QUEEN_FRENZY_POINTS;
+    if (kk && isKingOfSpades(c)) p += KRAKEN_KING_POINTS;
   }
   return p;
 }

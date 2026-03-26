@@ -10,6 +10,11 @@ export function SoloConfig({ onStart, onBack }: SoloConfigProps) {
   const [scoreLimit, setScoreLimit] = useState(100);
   const [jackOfDiamonds, setJackOfDiamonds] = useState(false);
   const [moonVariant, setMoonVariant] = useState<MoonScoringVariant>(MoonScoringVariant.ADD_TO_OTHERS);
+  const [tenOfClubs, setTenOfClubs] = useState(false);
+  const [bloodHearts, setBloodHearts] = useState(false);
+  const [noPassing, setNoPassing] = useState(false);
+  const [queenFrenzy, setQueenFrenzy] = useState(false);
+  const [krakenKing, setKrakenKing] = useState(false);
 
   const difficulties: { value: BotDifficulty; label: string; desc: string; color: string }[] = [
     { value: BotDifficulty.EASY, label: 'EASY', desc: 'Plays random legal cards. Great for learning!', color: 'text-pixel-green border-pixel-green' },
@@ -18,6 +23,21 @@ export function SoloConfig({ onStart, onBack }: SoloConfigProps) {
   ];
 
   const scoreLimits = [50, 75, 100, 150, 200];
+
+  const variants: { key: string; label: string; desc: string; checked: boolean; onChange: (v: boolean) => void; color: string }[] = [
+    { key: 'jod', label: '♦J = −10 pts', desc: 'Jack of Diamonds', checked: jackOfDiamonds, onChange: setJackOfDiamonds, color: 'text-pixel-gold' },
+    { key: 'toc', label: '♣10 = +10 pts', desc: 'Ten of Clubs Bomb', checked: tenOfClubs, onChange: setTenOfClubs, color: 'text-pixel-green' },
+    { key: 'bh', label: '♥ = 2 pts each', desc: 'Blood Hearts', checked: bloodHearts, onChange: setBloodHearts, color: 'text-pixel-accent' },
+    { key: 'np', label: 'No Passing', desc: 'Skip all pass phases', checked: noPassing, onChange: setNoPassing, color: 'text-pixel-muted' },
+    { key: 'qf', label: 'Queens = +6 pts', desc: 'Queen Frenzy', checked: queenFrenzy, onChange: setQueenFrenzy, color: 'text-purple-400' },
+    { key: 'kk', label: '♠K = +17 pts', desc: 'Kraken King', checked: krakenKing, onChange: setKrakenKing, color: 'text-red-400' },
+  ];
+
+  const handlePartyMode = () => {
+    setJackOfDiamonds(true); setTenOfClubs(true); setBloodHearts(true);
+    setNoPassing(true); setQueenFrenzy(true); setKrakenKing(true);
+    setScoreLimit(200); setDifficulty(BotDifficulty.HARD);
+  };
 
   return (
     <div className="w-full h-full flex flex-col items-center justify-center p-4 overflow-y-auto">
@@ -47,10 +67,17 @@ export function SoloConfig({ onStart, onBack }: SoloConfigProps) {
         </div>
         <div className="mb-5">
           <label className="block text-[8px] font-pixel text-pixel-muted mb-2 uppercase">Variants</label>
-          <label className="flex items-center gap-3 cursor-pointer py-1">
-            <input type="checkbox" checked={jackOfDiamonds} onChange={(e) => setJackOfDiamonds(e.target.checked)} className="w-4 h-4 accent-pixel-gold" />
-            <span className="font-pixel text-[8px]">Jack of Diamonds (♦J = −10 pts)</span>
-          </label>
+          <div className="flex flex-col gap-1">
+            {variants.map(v => (
+              <label key={v.key} className="flex items-center gap-3 cursor-pointer py-1">
+                <input type="checkbox" checked={v.checked} onChange={(e) => v.onChange(e.target.checked)} className="w-4 h-4 accent-pixel-gold" />
+                <div>
+                  <span className={`font-pixel text-[8px] ${v.checked ? v.color : 'text-pixel-text'}`}>{v.label}</span>
+                  <span className="font-pixel text-[6px] text-pixel-muted ml-2">{v.desc}</span>
+                </div>
+              </label>
+            ))}
+          </div>
           <div className="mt-3">
             <label className="block text-[7px] font-pixel text-pixel-muted mb-1">Moon Scoring</label>
             <div className="flex gap-2 flex-wrap">
@@ -72,11 +99,12 @@ export function SoloConfig({ onStart, onBack }: SoloConfigProps) {
             <PixelButton variant="secondary" size="sm" onClick={() => { setScoreLimit(50); setDifficulty(BotDifficulty.EASY); }}>Quick (50)</PixelButton>
             <PixelButton variant="secondary" size="sm" onClick={() => { setScoreLimit(100); setDifficulty(BotDifficulty.MEDIUM); }}>Standard</PixelButton>
             <PixelButton variant="secondary" size="sm" onClick={() => { setScoreLimit(200); setDifficulty(BotDifficulty.HARD); }}>Marathon</PixelButton>
+            <PixelButton variant="gold" size="sm" onClick={handlePartyMode}>PARTY MODE</PixelButton>
           </div>
         </div>
         <div className="flex gap-3 justify-between mt-4">
           <PixelButton variant="secondary" size="sm" onClick={onBack}>← BACK</PixelButton>
-          <PixelButton variant="primary" size="lg" onClick={() => onStart(difficulty, { scoreLimit, jackOfDiamonds, moonScoringVariant: moonVariant })}>♥ START ♥</PixelButton>
+          <PixelButton variant="primary" size="lg" onClick={() => onStart(difficulty, { scoreLimit, jackOfDiamonds, moonScoringVariant: moonVariant, tenOfClubs, bloodHearts, noPassing, queenFrenzy, krakenKing })}>♥ START ♥</PixelButton>
         </div>
       </PixelPanel>
     </div>

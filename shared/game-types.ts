@@ -114,6 +114,12 @@ export interface GameSettings {
   botDifficulty: BotDifficulty;
   turnTimeout: number;
   animationSpeed: 'slow' | 'normal' | 'fast' | 'instant';
+  // New variants (mild → wild)
+  tenOfClubs: boolean;       // 10♣ = +10 penalty pts
+  bloodHearts: boolean;      // Hearts worth 2 pts each instead of 1
+  noPassing: boolean;        // Skip all passing phases
+  queenFrenzy: boolean;      // All Queens worth 6 pts each (QoS stays 13)
+  krakenKing: boolean;       // K♠ = +17 penalty pts
 }
 
 export interface GameState {
@@ -189,6 +195,18 @@ export function isJackOfDiamonds(card: Card): boolean {
 
 export function isTwoOfClubs(card: Card): boolean {
   return card.suit === Suit.CLUBS && card.rank === Rank.TWO;
+}
+
+export function isTenOfClubs(card: Card): boolean {
+  return card.suit === Suit.CLUBS && card.rank === Rank.TEN;
+}
+
+export function isKingOfSpades(card: Card): boolean {
+  return card.suit === Suit.SPADES && card.rank === Rank.KING;
+}
+
+export function isQueen(card: Card): boolean {
+  return card.rank === Rank.QUEEN;
 }
 
 export function isPenaltyCard(card: Card): boolean {
