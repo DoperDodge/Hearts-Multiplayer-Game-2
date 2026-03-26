@@ -1,15 +1,18 @@
 // ============================================================
 // PIXEL HEARTS — Audio Manager
-// Bridges settings store ↔ music generator + SFX player
+// Bridges settings store ↔ music generator + MP3 player + SFX
 // ============================================================
 
 import { musicGenerator } from './MusicGenerator';
+import { musicPlayer } from './MusicPlayer';
 import { sfx, SFXName } from './SoundEffects';
 import { useSettingsStore } from '../store/settingsStore';
+import { getTrackById } from './musicTracks';
 
 class AudioManager {
   private initialized = false;
   private musicStarted = false;
+  private currentTrackId: string | null = null;
 
   /**
    * Initialize audio on first user interaction (required by browsers).
@@ -29,6 +32,9 @@ class AudioManager {
       ) {
         this.syncFromStore();
       }
+      if (state.musicTrack !== prev.musicTrack) {
+        this.switchTrack(state.musicTrack);
+      }
     });
   }
 
@@ -37,11 +43,34 @@ class AudioManager {
 
     if (muted) {
       musicGenerator.volume = 0;
+      musicPlayer.volume = 0;
       sfx.muted = true;
     } else {
       musicGenerator.volume = masterVolume * musicVolume;
+      musicPlayer.volume = masterVolume * musicVolume;
       sfx.volume = masterVolume * sfxVolume;
       sfx.muted = false;
+    }
+  }
+
+  private switchTrack(trackId: string): void {
+    if (!this.musicStarted) {
+      this.currentTrackId = trackId;
+      return;
+    }
+
+    // Stop whichever is currently playing
+    musicGenerator.stop();
+    musicPlayer.stop();
+
+    const track = getTrackById(trackId);
+    this.currentTrackId = trackId;
+
+    if (!track || track.file === null) {
+      // Procedural music
+      musicGenerator.start();
+    } else {
+      musicPlayer.play(track.file);
     }
   }
 
@@ -50,10 +79,17 @@ class AudioManager {
    */
   startMusic(): void {
     if (this.musicStarted) return;
-    const { muted } = useSettingsStore.getState();
+    const { muted, musicTrack } = useSettingsStore.getState();
     if (muted) return;
     this.musicStarted = true;
-    musicGenerator.start();
+    this.currentTrackId = musicTrack;
+
+    const track = getTrackById(musicTrack);
+    if (!track || track.file === null) {
+      musicGenerator.start();
+    } else {
+      musicPlayer.play(track.file);
+    }
   }
 
   /**
@@ -62,6 +98,7 @@ class AudioManager {
   stopMusic(): void {
     this.musicStarted = false;
     musicGenerator.stop();
+    musicPlayer.stop();
   }
 
   /**

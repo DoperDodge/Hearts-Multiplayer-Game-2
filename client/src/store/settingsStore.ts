@@ -22,6 +22,7 @@ interface SettingsStore {
   sfxVolume: number;
   musicVolume: number;
   muted: boolean;
+  musicTrack: string;
 
   // Gameplay
   animationSpeed: AnimationSpeed;
@@ -51,6 +52,7 @@ interface SettingsStore {
   setSfxVolume: (v: number) => void;
   setMusicVolume: (v: number) => void;
   toggleMute: (v?: boolean) => void;
+  setMusicTrack: (id: string) => void;
   setAnimationSpeed: (s: AnimationSpeed) => void;
   setAutoSortHand: (v: boolean) => void;
   setCardSize: (s: 'small' | 'medium' | 'large') => void;
@@ -78,6 +80,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
   sfxVolume: load('sfxVolume', 0.8),
   musicVolume: load('musicVolume', 0.5),
   muted: load('muted', false),
+  musicTrack: load('musicTrack', 'main-theme'),
   animationSpeed: load('animationSpeed', 'normal' as AnimationSpeed),
   autoSortHand: load('autoSortHand', true),
   cardSize: load('cardSize', 'medium'),
@@ -97,6 +100,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
   setSfxVolume: (v) => { save('sfxVolume', v); set({ sfxVolume: v }); },
   setMusicVolume: (v) => { save('musicVolume', v); set({ musicVolume: v }); },
   toggleMute: (v) => set((s) => { const m = v !== undefined ? v : !s.muted; save('muted', m); return { muted: m }; }),
+  setMusicTrack: (id) => { save('musicTrack', id); set({ musicTrack: id }); },
   setAnimationSpeed: (s) => { save('animationSpeed', s); set({ animationSpeed: s }); },
   setAutoSortHand: (v) => { save('autoSortHand', v); set({ autoSortHand: v }); },
   setCardSize: (s) => { save('cardSize', s); set({ cardSize: s }); },
