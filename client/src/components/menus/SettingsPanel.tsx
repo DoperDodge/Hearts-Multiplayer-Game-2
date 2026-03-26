@@ -3,6 +3,7 @@ import { PixelButton } from '../shared/PixelButton';
 import { PixelPanel } from '../shared/PixelPanel';
 import { useSettingsStore } from '../../store/settingsStore';
 import { audioManager } from '../../audio/AudioManager';
+import { MUSIC_TRACKS } from '../../audio/musicTracks';
 
 function Slider({ label, value, onChange, min = 0, max = 1, step = 0.1 }: {
   label: string; value: number; onChange: (v: number) => void; min?: number; max?: number; step?: number;
@@ -62,6 +63,18 @@ export function SettingsPanel({ onBack }: { onBack: () => void }) {
               >
                 {musicPlaying ? '♪ ON' : '♪ OFF'}
               </PixelButton>
+            </div>
+            <div>
+              <span className="font-pixel text-[7px] text-pixel-muted">Music Track</span>
+              <select
+                value={settings.musicTrack}
+                onChange={e => { audioManager.init(); settings.setMusicTrack(e.target.value); }}
+                className="w-full mt-1 px-2 py-1 bg-pixel-bg border-2 border-pixel-panel text-pixel-text font-pixel text-[7px] cursor-pointer appearance-none hover:border-pixel-gold focus:border-pixel-gold focus:outline-none"
+              >
+                {MUSIC_TRACKS.map(track => (
+                  <option key={track.id} value={track.id}>{track.name}</option>
+                ))}
+              </select>
             </div>
           </div>
         </div>
