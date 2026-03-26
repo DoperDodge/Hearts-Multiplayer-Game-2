@@ -23,27 +23,45 @@ export function findStartingPlayer(hands: Card[][]): number {
   throw new Error('No 2 of Clubs');
 }
 
-export function getLegalMoves(hand: Card[], trick: TrickCard[], isFirst: boolean, hb: boolean, noPointsFirst: boolean = false): Card[] {
+export interface LegalMoveModifiers {
+  noPointsFirst?: boolean;
+  mustBleed?: boolean;
+  heartsAlwaysLead?: boolean;
+}
+
+export function getLegalMoves(hand: Card[], trick: TrickCard[], isFirst: boolean, hb: boolean, mods: LegalMoveModifiers = {}): Card[] {
   if (hand.length === 0) return [];
   if (trick.length === 0) {
+    // Leading a trick
     if (isFirst) { const tc = hand.find(c => isTwoOfClubs(c)); if (tc) return [tc]; }
-    if (!hb) { const nh = hand.filter(c => c.suit !== Suit.HEARTS); if (nh.length > 0) return nh; }
+    if (!hb && !mods.heartsAlwaysLead) { const nh = hand.filter(c => c.suit !== Suit.HEARTS); if (nh.length > 0) return nh; }
     return [...hand];
   }
+  // Following suit
   const ls = trick[0].card.suit;
   const sc = hand.filter(c => c.suit === ls);
   if (sc.length > 0) return sc;
+  // Void in led suit
   if (isFirst) { const np = hand.filter(c => !isPenaltyCard(c)); if (np.length > 0) return np; }
+  // mustBleed: when void, must play penalty cards first
+  if (mods.mustBleed && !isFirst) {
+    const penaltyCards = hand.filter(c => isPenaltyCard(c));
+    if (penaltyCards.length > 0) return penaltyCards;
+  }
   return [...hand];
 }
 
-export function isLegalMove(card: Card, hand: Card[], trick: TrickCard[], isFirst: boolean, hb: boolean, noPointsFirst: boolean = false): boolean {
-  return getLegalMoves(hand, trick, isFirst, hb, noPointsFirst).some(c => c.id === card.id);
+export function isLegalMove(card: Card, hand: Card[], trick: TrickCard[], isFirst: boolean, hb: boolean, mods: LegalMoveModifiers = {}): boolean {
+  return getLegalMoves(hand, trick, isFirst, hb, mods).some(c => c.id === card.id);
 }
 
-export function getTrickWinner(trick: TrickCard[]): TrickCard {
+export function getTrickWinner(trick: TrickCard[], reverse: boolean = false): TrickCard {
   const ls = trick[0].card.suit; let w = trick[0];
-  for (let i = 1; i < trick.length; i++) if (trick[i].card.suit === ls && trick[i].card.rank > w.card.rank) w = trick[i];
+  for (let i = 1; i < trick.length; i++) {
+    if (trick[i].card.suit === ls) {
+      if (reverse ? trick[i].card.rank < w.card.rank : trick[i].card.rank > w.card.rank) w = trick[i];
+    }
+  }
   return w;
 }
 
@@ -70,6 +88,12 @@ export function calculateTrickPoints(cards: Card[], settings: Partial<GameSettin
     if (kk && isKingOfSpades(c)) p += KRAKEN_KING_POINTS;
   }
   return p;
+}
+
+/** Pick n random cards from hand */
+export function pickRandomCards(hand: Card[], n: number): Card[] {
+  const shuffled = [...hand].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, n);
 }
 
 export function getNextPlayerIndex(cur: number, n: number = NUM_PLAYERS): number { return (cur + 1) % n; }
