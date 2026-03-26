@@ -1,6 +1,7 @@
 // ============================================================
 // PIXEL HEARTS — Music Track Definitions
-// Add new .mp3 files to client/public/music/ and register them here.
+// Auto-detects .mp3 files from client/public/music/ at build time.
+// Just drop new .mp3 files in that folder — no manual editing needed.
 // ============================================================
 
 export interface MusicTrack {
@@ -10,10 +11,20 @@ export interface MusicTrack {
   file: string | null;
 }
 
+// Auto-discover .mp3 files from public/music/ at build time via Vite's import.meta.glob
+const musicFiles = import.meta.glob('/public/music/*.mp3', { eager: true, query: '?url', import: 'default' }) as Record<string, string>;
+
+// Build track list: Main Theme first, then all discovered .mp3 files
+const fileEntries: MusicTrack[] = Object.entries(musicFiles).map(([path, url]) => {
+  // Extract filename without extension for display name
+  const filename = path.split('/').pop()?.replace(/\.mp3$/, '') || 'Unknown';
+  const id = filename.toLowerCase().replace(/\s+/g, '-');
+  return { id, name: filename, file: url };
+});
+
 export const MUSIC_TRACKS: MusicTrack[] = [
   { id: 'main-theme', name: 'Main Theme (Chiptune)', file: null },
-  // To add a new track, place the .mp3 in client/public/music/ and add an entry:
-  // { id: 'chill-vibes', name: 'Chill Vibes', file: '/music/chill-vibes.mp3' },
+  ...fileEntries,
 ];
 
 export function getTrackById(id: string): MusicTrack | undefined {
